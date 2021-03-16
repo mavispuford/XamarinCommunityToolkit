@@ -96,8 +96,11 @@ namespace Xamarin.CommunityToolkit.UI.Views
 		TaskCompletionSource<CameraDevice> initTaskSource;
 		TaskCompletionSource<bool> permissionsRequested;
 
+		private IAndroidCameraPreviewProcessor cameraPreviewProcessor;
+
 		public CameraFragment()
 		{
+			cameraPreviewProcessor = DependencyService.Get<IAndroidCameraPreviewProcessor>();
 		}
 
 		public CameraFragment(IntPtr javaReference, JniHandleOwnership transfer)
@@ -322,17 +325,20 @@ namespace Xamarin.CommunityToolkit.UI.Views
 			{
 				default:
 				case CameraCaptureMode.Photo:
-					cameraTemplate = CameraTemplate.Preview;
+					cameraTemplate = CameraTemplate.StillCapture;
 					break;
 				case CameraCaptureMode.Video:
 					cameraTemplate = CameraTemplate.Record;
+					break;
+				case CameraCaptureMode.Preview:
+					cameraTemplate = CameraTemplate.Preview;
 					break;
 			}
 		}
 
 		public void TakePhoto()
 		{
-			if (IsBusy || cameraTemplate != CameraTemplate.Preview)
+			if (IsBusy || cameraTemplate != CameraTemplate.StillCapture)
 				return;
 
 			try
@@ -556,7 +562,7 @@ namespace Xamarin.CommunityToolkit.UI.Views
 					}
 
 					// photo mode
-					else
+					else if (cameraTemplate == CameraTemplate.StillCapture)
 					{
 						SetupImageReader();
 						surfaces.Add(photoReader.Surface);
@@ -572,7 +578,7 @@ namespace Xamarin.CommunityToolkit.UI.Views
 						OnConfigureFailedAction = captureSession =>
 						{
 							tcs.SetResult(null);
-							Element.RaiseMediaCaptureFailed("Failed to create captire sesstion");
+							Element.RaiseMediaCaptureFailed("Failed to create capture session");
 						},
 						OnConfiguredAction = captureSession => tcs.SetResult(captureSession)
 					},
@@ -761,8 +767,12 @@ namespace Xamarin.CommunityToolkit.UI.Views
 			return true;
 		}
 
-		void TextureView.ISurfaceTextureListener.OnSurfaceTextureUpdated(SurfaceTexture surface)
+		async void TextureView.ISurfaceTextureListener.OnSurfaceTextureUpdated(SurfaceTexture surface)
 		{
+			if (cameraTemplate == CameraTemplate.Preview && cameraPreviewProcessor != null)
+			{
+				await cameraPreviewProcessor.Process(surface);
+			}
 		}
 		#endregion
 

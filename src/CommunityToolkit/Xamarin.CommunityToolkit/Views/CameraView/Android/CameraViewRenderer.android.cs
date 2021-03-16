@@ -195,6 +195,8 @@ namespace Xamarin.CommunityToolkit.UI.Views
 					else
 						camerafragment.StopRecord();
 					break;
+				case CameraCaptureMode.Preview:
+					break;
 			}
 		}
 

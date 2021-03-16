@@ -4,6 +4,7 @@
 	{
 		Default,
 		Photo,
-		Video
+		Video,
+		Preview
 	}
 }
