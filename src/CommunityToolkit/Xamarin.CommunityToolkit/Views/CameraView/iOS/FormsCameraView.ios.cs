@@ -2,6 +2,7 @@
 using System.IO;
 using System.Threading.Tasks;
 using AVFoundation;
+using CoreFoundation;
 using CoreGraphics;
 using CoreMedia;
 using Foundation;
@@ -47,13 +48,19 @@ namespace Xamarin.CommunityToolkit.UI.Views
 				SessionPreset = AVCaptureSession.PresetHigh
 			};
 
+			var dataOutput = new AVCaptureVideoDataOutput();
+			var bufferDelegate = new PreviewCameraOutputDelegate();
+			dataOutput.SetSampleBufferDelegateQueue(bufferDelegate, DispatchQueue.MainQueue);
+
+			captureSession.AddOutput(dataOutput);
+
 			previewLayer = new AVCaptureVideoPreviewLayer(captureSession)
 			{
 				VideoGravity = AVLayerVideoGravity.ResizeAspectFill
 			};
 
 			mainView.Layer.AddSublayer(previewLayer);
-
+			
 			Add(mainView);
 
 			AddConstraints(NSLayoutConstraint.FromVisualFormat("V:|[mainView]|", NSLayoutFormatOptions.DirectionLeftToRight, null, new NSDictionary("mainView", mainView)));
