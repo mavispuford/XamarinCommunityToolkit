@@ -1,4 +1,5 @@
-﻿using AVFoundation;
+﻿using System;
+using AVFoundation;
 using CoreMedia;
 using Xamarin.Forms;
 
@@ -6,11 +7,12 @@ namespace Xamarin.CommunityToolkit.UI.Views
 {
 	public class PreviewCameraOutputDelegate : AVCaptureVideoDataOutputSampleBufferDelegate
 	{
-		private IIOSCameraPreviewProcessor cameraPreviewProcessor;
+		private ICameraPreviewProcessor cameraPreviewProcessor;
 
-		public PreviewCameraOutputDelegate() : base()
+		public PreviewCameraOutputDelegate()
+			: base()
 		{
-			cameraPreviewProcessor = DependencyService.Get<IIOSCameraPreviewProcessor>();
+			cameraPreviewProcessor = DependencyService.Get<ICameraPreviewProcessor>();
 		}
 
 		public override async void DidOutputSampleBuffer(AVCaptureOutput captureOutput, CMSampleBuffer sampleBuffer,
@@ -18,10 +20,13 @@ namespace Xamarin.CommunityToolkit.UI.Views
 		{
 			if (cameraPreviewProcessor != null)
 			{
-				await cameraPreviewProcessor.Process();
+				await cameraPreviewProcessor.Process(sampleBuffer);
 			}
 
-			base.DidOutputSampleBuffer(captureOutput, sampleBuffer, connection);
+			// If we don't garbage collect, it seems to build up and eventually stops calling DidOutputSampleBuffer()
+			// See: https://stackoverflow.com/q/30850676
+			GC.Collect();
+			GC.WaitForPendingFinalizers();
 		}
 	}
 }

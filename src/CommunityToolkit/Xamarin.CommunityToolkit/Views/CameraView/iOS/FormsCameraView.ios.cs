@@ -20,6 +20,7 @@ namespace Xamarin.CommunityToolkit.UI.Views
 		AVCaptureStillImageOutput imageOutput;
 		AVCapturePhotoOutput photoOutput;
 		AVCaptureMovieFileOutput videoOutput;
+		AVCaptureVideoDataOutput dataOutput;
 		AVCaptureConnection captureConnection;
 		AVCaptureDevice device;
 		AVCaptureDevicePosition? lastPosition;
@@ -47,12 +48,6 @@ namespace Xamarin.CommunityToolkit.UI.Views
 			{
 				SessionPreset = AVCaptureSession.PresetHigh
 			};
-
-			var dataOutput = new AVCaptureVideoDataOutput();
-			var bufferDelegate = new PreviewCameraOutputDelegate();
-			dataOutput.SetSampleBufferDelegateQueue(bufferDelegate, DispatchQueue.MainQueue);
-
-			captureSession.AddOutput(dataOutput);
 
 			previewLayer = new AVCaptureVideoPreviewLayer(captureSession)
 			{
@@ -503,6 +498,15 @@ namespace Xamarin.CommunityToolkit.UI.Views
 						captureSession.AddOutput(imageOutput);
 				}
 
+				dataOutput = new AVCaptureVideoDataOutput();
+				var bufferDelegate = new PreviewCameraOutputDelegate();
+				dataOutput.SetSampleBufferDelegateQueue(bufferDelegate, new DispatchQueue("preview.image.handling.queue"));
+
+				if (captureSession.CanAddOutput(dataOutput))
+				{
+					captureSession.AddOutput(dataOutput);
+				}
+
 				captureSession.CommitConfiguration();
 
 				InvokeOnMainThread(() =>
@@ -533,6 +537,8 @@ namespace Xamarin.CommunityToolkit.UI.Views
 					captureSession.RemoveOutput(photoOutput);
 				if (videoOutput != null)
 					captureSession.RemoveOutput(videoOutput);
+				if (dataOutput != null)
+					captureSession.RemoveOutput(dataOutput);
 				if (input != null)
 					captureSession.RemoveInput(input);
 			}
@@ -548,6 +554,9 @@ namespace Xamarin.CommunityToolkit.UI.Views
 
 			videoOutput?.Dispose();
 			videoOutput = null;
+
+			dataOutput?.Dispose();
+			dataOutput = null;
 		}
 
 		protected override void Dispose(bool disposing)
