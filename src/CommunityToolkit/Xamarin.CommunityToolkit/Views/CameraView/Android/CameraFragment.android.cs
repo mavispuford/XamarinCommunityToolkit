@@ -96,11 +96,11 @@ namespace Xamarin.CommunityToolkit.UI.Views
 		TaskCompletionSource<CameraDevice> initTaskSource;
 		TaskCompletionSource<bool> permissionsRequested;
 
-		private IAndroidCameraPreviewProcessor cameraPreviewProcessor;
+		readonly ICameraPreviewProcessor cameraPreviewProcessor;
 
 		public CameraFragment()
 		{
-			cameraPreviewProcessor = DependencyService.Get<IAndroidCameraPreviewProcessor>();
+			cameraPreviewProcessor = DependencyService.Get<ICameraPreviewProcessor>();
 		}
 
 		public CameraFragment(IntPtr javaReference, JniHandleOwnership transfer)
@@ -771,7 +771,14 @@ namespace Xamarin.CommunityToolkit.UI.Views
 		{
 			if (cameraTemplate == CameraTemplate.Preview && cameraPreviewProcessor != null)
 			{
-				await cameraPreviewProcessor.Process(surface);
+				// This using is needed to ensure that the Bitmap is garbage collected
+				using var bitmap = texture?.Bitmap;
+				if (bitmap == null)
+				{
+					return;
+				}
+
+				await cameraPreviewProcessor.Process(bitmap, GetDisplayRotationDegrees());
 			}
 		}
 		#endregion
