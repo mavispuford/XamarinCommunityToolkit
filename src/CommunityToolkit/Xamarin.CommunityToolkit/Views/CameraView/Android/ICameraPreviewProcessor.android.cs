@@ -9,7 +9,7 @@ namespace Xamarin.CommunityToolkit.UI.Views
 	public interface ICameraPreviewProcessor
 	{
 		/// <summary>
-		/// 	Processes the the provided camera surface texture.
+		/// 	Processes the the provided camera preview bitmap.
 		/// </summary>
 		/// <param name="bitmap">The bitmap.</param>
 		/// <param name="rotationDegrees">The rotation in degrees.</param>
