@@ -28,6 +28,7 @@ namespace Xamarin.CommunityToolkit.UI.Views
 		bool isAvailable;
 		bool isDisposed;
 		CameraFlashMode flashMode;
+		CameraCaptureMode captureMode;
 		readonly float imgScale = 1f;
 
 		public event EventHandler<bool> Busy;
@@ -398,6 +399,11 @@ namespace Xamarin.CommunityToolkit.UI.Views
 			}
 		}
 
+		public void SetCameraCaptureMode(CameraCaptureMode captureMode)
+		{
+			this.captureMode = captureMode;
+		}
+
 		public void RetrieveCameraDevice(CameraOptions cameraOptions)
 		{
 			var cameraAccess = false;
@@ -498,13 +504,16 @@ namespace Xamarin.CommunityToolkit.UI.Views
 						captureSession.AddOutput(imageOutput);
 				}
 
-				dataOutput = new AVCaptureVideoDataOutput();
-				var bufferDelegate = new PreviewCameraOutputDelegate();
-				dataOutput.SetSampleBufferDelegateQueue(bufferDelegate, new DispatchQueue("preview.image.handling.queue"));
-
-				if (captureSession.CanAddOutput(dataOutput))
+				if (captureMode == CameraCaptureMode.Preview)
 				{
-					captureSession.AddOutput(dataOutput);
+					dataOutput = new AVCaptureVideoDataOutput();
+					var bufferDelegate = new PreviewCameraOutputDelegate();
+					dataOutput.SetSampleBufferDelegateQueue(bufferDelegate, new DispatchQueue("preview.image.handling.queue"));
+
+					if (captureSession.CanAddOutput(dataOutput))
+					{
+						captureSession.AddOutput(dataOutput);
+					}
 				}
 
 				captureSession.CommitConfiguration();

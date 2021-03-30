@@ -193,6 +193,10 @@ namespace Xamarin.CommunityToolkit.UI.Views
 				case nameof(CameraView.Zoom):
 					Control.Zoom = (float)Element.Zoom;
 					break;
+				case nameof(CameraView.CaptureMode):
+					Control.SetCameraCaptureMode(Element.CaptureMode);
+					Control.RetrieveCameraDevice(Element.CameraOptions);
+					break;
 			}
 		}
 
