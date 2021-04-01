@@ -1,5 +1,5 @@
 ﻿using System.Threading.Tasks;
-using Android.Graphics;
+using Android.Media;
 
 namespace Xamarin.CommunityToolkit.UI.Views
 {
@@ -9,10 +9,10 @@ namespace Xamarin.CommunityToolkit.UI.Views
 	public interface ICameraPreviewProcessor
 	{
 		/// <summary>
-		/// 	Processes the the provided camera preview bitmap.
+		/// 	Processes the the provided camera preview image.
 		/// </summary>
-		/// <param name="bitmap">The bitmap.</param>
+		/// <param name="image">The image.</param>
 		/// <param name="rotationDegrees">The rotation in degrees.</param>
-		Task Process(Bitmap bitmap, int rotationDegrees);
+		Task Process(Image image, int rotationDegrees);
 	}
 }

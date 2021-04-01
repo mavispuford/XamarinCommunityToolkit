@@ -55,6 +55,7 @@ namespace Xamarin.CommunityToolkit.UI.Views
 
 		AutoFitTextureView texture;
 		ImageReader photoReader;
+		ImageReader previewReader;
 		MediaRecorder mediaRecorder;
 		bool audioPermissionsGranted;
 		bool cameraPermissionsGranted;
@@ -96,11 +97,8 @@ namespace Xamarin.CommunityToolkit.UI.Views
 		TaskCompletionSource<CameraDevice> initTaskSource;
 		TaskCompletionSource<bool> permissionsRequested;
 
-		readonly ICameraPreviewProcessor cameraPreviewProcessor;
-
 		public CameraFragment()
 		{
-			cameraPreviewProcessor = DependencyService.Get<ICameraPreviewProcessor>();
 		}
 
 		public CameraFragment(IntPtr javaReference, JniHandleOwnership transfer)
@@ -400,6 +398,16 @@ namespace Xamarin.CommunityToolkit.UI.Views
 			photoReader.SetOnImageAvailableListener(readerListener, backgroundHandler);
 		}
 
+		void SetupPreviewImageReader()
+		{
+			DisposePreviewImageReader();
+
+			previewReader = ImageReader.NewInstance(previewSize.Width, previewSize.Height, ImageFormatType.Yuv420888, 1);
+
+			var readerListener = new OnPreviewImageAvailableListener(Context);
+			previewReader.SetOnImageAvailableListener(readerListener, backgroundHandler);
+		}
+
 		private int GetRotationCompensation()
 		{
 			var rotationCompensation = GetDisplayRotationDegrees();
@@ -567,6 +575,12 @@ namespace Xamarin.CommunityToolkit.UI.Views
 						SetupImageReader();
 						surfaces.Add(photoReader.Surface);
 					}
+					else if (cameraTemplate == CameraTemplate.Preview)
+					{
+						SetupPreviewImageReader();
+						surfaces.Add(previewReader.Surface);
+						sessionBuilder.AddTarget(previewReader.Surface);
+					}
 				}
 
 				var tcs = new TaskCompletionSource<CameraCaptureSession>();
@@ -686,6 +700,7 @@ namespace Xamarin.CommunityToolkit.UI.Views
 				}
 
 				DisposeImageReader();
+				DisposePreviewImageReader();
 			}
 			catch (Java.Lang.Exception e)
 			{
@@ -769,17 +784,17 @@ namespace Xamarin.CommunityToolkit.UI.Views
 
 		async void TextureView.ISurfaceTextureListener.OnSurfaceTextureUpdated(SurfaceTexture surface)
 		{
-			if (cameraTemplate == CameraTemplate.Preview && cameraPreviewProcessor != null)
-			{
-				// This using is needed to ensure that the Bitmap is garbage collected
-				using var bitmap = texture?.Bitmap;
-				if (bitmap == null)
-				{
-					return;
-				}
-
-				await cameraPreviewProcessor.Process(bitmap, GetDisplayRotationDegrees());
-			}
+			// if (cameraTemplate == CameraTemplate.Preview && cameraPreviewProcessor != null)
+			// {
+			// 	// This using is needed to ensure that the Bitmap is garbage collected
+			// 	using var bitmap = texture?.Bitmap;
+			// 	if (bitmap == null)
+			// 	{
+			// 		return;
+			// 	}
+			//
+			// 	await cameraPreviewProcessor.Process(bitmap, GetDisplayRotationDegrees());
+			// }
 		}
 		#endregion
 
@@ -872,6 +887,16 @@ namespace Xamarin.CommunityToolkit.UI.Views
 				photoReader.Close();
 				photoReader.Dispose();
 				photoReader = null;
+			}
+		}
+
+		void DisposePreviewImageReader()
+		{
+			if (previewReader != null)
+			{
+				previewReader.Close();
+				previewReader.Dispose();
+				previewReader = null;
 			}
 		}
 
