@@ -17,7 +17,7 @@ namespace Xamarin.CommunityToolkit.UI.Views
 		}
 
 		public OnPreviewImageAvailableListener(Context context)
-            : base()
+            : this()
 		{
 			_context = context;
 		}

@@ -74,6 +74,10 @@ namespace Xamarin.CommunityToolkit.UI.Views
 					if (Element.CaptureMode == CameraCaptureMode.Video)
 						camerafragment.UpdateRepeatingRequest();
 					break;
+				case nameof(CameraView.FrameQuality):
+					if (Element.CaptureMode == CameraCaptureMode.Preview)
+						await camerafragment.RetrieveCameraDevice();
+					break;
 
 					// case nameof(CameraView.PreviewAspect):
 					// case "MirrorFrontPreview":
