@@ -49,16 +49,24 @@ namespace Xamarin.CommunityToolkit.UI.Views
 		// Max preview height that is guaranteed by Camera2 API
 		const int MAX_PREVIEW_WIDTH = 1920;
 
+		const int MIN_PREVIEW_READER_HEIGHT_QUALITY = 720;
+		const int MIN_PREVIEW_READER_WIDTH_QUALITY = 1280;
+		const int MIN_PREVIEW_READER_HEIGHT_PERFORMANCE = 600;
+		const int MIN_PREVIEW_READER_WIDTH_PERFORMANCE = 800;
+		const int MAX_PREVIEW_READER_HEIGHT = 1080;
+		const int MAX_PREVIEW_READER_WIDTH = 1920;
+
 		CameraDevice device;
 		CaptureRequest.Builder sessionBuilder;
 		CameraCaptureSession session;
 
 		AutoFitTextureView texture;
 		ImageReader photoReader;
+		ImageReader previewReader;
 		MediaRecorder mediaRecorder;
 		bool audioPermissionsGranted;
 		bool cameraPermissionsGranted;
-		ASize previewSize, videoSize, photoSize;
+		ASize previewSize, videoSize, photoSize, previewImageReaderSize;
 		int sensorOrientation;
 		LensFacing cameraType;
 
@@ -96,11 +104,8 @@ namespace Xamarin.CommunityToolkit.UI.Views
 		TaskCompletionSource<CameraDevice> initTaskSource;
 		TaskCompletionSource<bool> permissionsRequested;
 
-		readonly ICameraPreviewProcessor cameraPreviewProcessor;
-
 		public CameraFragment()
 		{
-			cameraPreviewProcessor = DependencyService.Get<ICameraPreviewProcessor>();
 		}
 
 		public CameraFragment(IntPtr javaReference, JniHandleOwnership transfer)
@@ -240,6 +245,14 @@ namespace Xamarin.CommunityToolkit.UI.Views
 					var rotatedViewHeight = texture.Height;
 					var maxPreviewWidth = displaySize.X;
 					var maxPreviewHeight = displaySize.Y;
+					var minPreviewReaderWidth = Element.PreviewFrameQuality == CameraView.FrameQuality.Performance
+						? MIN_PREVIEW_READER_WIDTH_PERFORMANCE
+						: MIN_PREVIEW_READER_WIDTH_QUALITY;
+					var minPreviewReaderHeight = Element.PreviewFrameQuality == CameraView.FrameQuality.Performance
+						? MIN_PREVIEW_READER_HEIGHT_PERFORMANCE
+						: MIN_PREVIEW_READER_HEIGHT_QUALITY;
+					var previewImageReaderWidth = minPreviewReaderWidth;
+					var previewImageReaderHeight = minPreviewReaderHeight;
 
 					if (sensorOrientation == 90 || sensorOrientation == 270)
 					{
@@ -247,6 +260,8 @@ namespace Xamarin.CommunityToolkit.UI.Views
 						rotatedViewHeight = texture.Width;
 						maxPreviewWidth = displaySize.Y;
 						maxPreviewHeight = displaySize.X;
+						previewImageReaderWidth = minPreviewReaderHeight;
+						previewImageReaderHeight = minPreviewReaderWidth;
 					}
 
 					if (maxPreviewHeight > MAX_PREVIEW_HEIGHT)
@@ -268,6 +283,14 @@ namespace Xamarin.CommunityToolkit.UI.Views
 						maxPreviewWidth,
 						maxPreviewHeight,
 						cameraTemplate == CameraTemplate.Record ? videoSize : photoSize);
+					previewImageReaderSize = ChooseOptimalSize(
+						map.GetOutputSizes((int)ImageFormatType.Yuv420888),
+						previewImageReaderWidth,
+						previewImageReaderHeight,
+						MAX_PREVIEW_READER_WIDTH,
+						MAX_PREVIEW_READER_HEIGHT,
+						photoSize);
+
 					cameraType = (LensFacing)(int)characteristics.Get(CameraCharacteristics.LensFacing);
 
 					if (Resources.Configuration.Orientation == AOrientation.Landscape)
@@ -398,6 +421,16 @@ namespace Xamarin.CommunityToolkit.UI.Views
 			};
 
 			photoReader.SetOnImageAvailableListener(readerListener, backgroundHandler);
+		}
+
+		void SetupPreviewImageReader()
+		{
+			DisposePreviewImageReader();
+
+			previewReader = ImageReader.NewInstance(previewImageReaderSize.Width, previewImageReaderSize.Height, ImageFormatType.Yuv420888, 1);
+
+			var readerListener = new OnPreviewImageAvailableListener(Context);
+			previewReader.SetOnImageAvailableListener(readerListener, backgroundHandler);
 		}
 
 		private int GetRotationCompensation()
@@ -567,6 +600,12 @@ namespace Xamarin.CommunityToolkit.UI.Views
 						SetupImageReader();
 						surfaces.Add(photoReader.Surface);
 					}
+					else if (cameraTemplate == CameraTemplate.Preview)
+					{
+						SetupPreviewImageReader();
+						surfaces.Add(previewReader.Surface);
+						sessionBuilder.AddTarget(previewReader.Surface);
+					}
 				}
 
 				var tcs = new TaskCompletionSource<CameraCaptureSession>();
@@ -686,6 +725,7 @@ namespace Xamarin.CommunityToolkit.UI.Views
 				}
 
 				DisposeImageReader();
+				DisposePreviewImageReader();
 			}
 			catch (Java.Lang.Exception e)
 			{
@@ -769,18 +809,8 @@ namespace Xamarin.CommunityToolkit.UI.Views
 
 		async void TextureView.ISurfaceTextureListener.OnSurfaceTextureUpdated(SurfaceTexture surface)
 		{
-			if (cameraTemplate == CameraTemplate.Preview && cameraPreviewProcessor != null)
-			{
-				// This using is needed to ensure that the Bitmap is garbage collected
-				using var bitmap = texture?.Bitmap;
-				if (bitmap == null)
-				{
-					return;
-				}
-
-				await cameraPreviewProcessor.Process(bitmap, GetDisplayRotationDegrees());
-			}
 		}
+
 		#endregion
 
 		#region Permissions
@@ -872,6 +902,16 @@ namespace Xamarin.CommunityToolkit.UI.Views
 				photoReader.Close();
 				photoReader.Dispose();
 				photoReader = null;
+			}
+		}
+
+		void DisposePreviewImageReader()
+		{
+			if (previewReader != null)
+			{
+				previewReader.Close();
+				previewReader.Dispose();
+				previewReader = null;
 			}
 		}
 

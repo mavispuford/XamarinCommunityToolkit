@@ -7,6 +7,12 @@ namespace Xamarin.CommunityToolkit.UI.Views
 {
 	public class CameraView : View
 	{
+		public enum FrameQuality
+		{
+			Quality,
+			Performance
+		}
+
 		public event EventHandler<MediaCapturedEventArgs> MediaCaptured;
 
 		public event EventHandler<string> MediaCaptureFailed;
@@ -109,6 +115,14 @@ namespace Xamarin.CommunityToolkit.UI.Views
 		{
 			get => (double)GetValue(MaxZoomProperty);
 			set => SetValue(MaxZoomProperty, value);
+		}
+
+		public static readonly BindableProperty PreviewFrameQualityProperty = BindableProperty.Create(nameof(PreviewFrameQuality), typeof(FrameQuality), typeof(CameraView), FrameQuality.Performance);
+
+		public FrameQuality PreviewFrameQuality
+		{
+			get => (FrameQuality)GetValue(PreviewFrameQualityProperty);
+			set => SetValue(PreviewFrameQualityProperty, value);
 		}
 
 		internal void RaiseMediaCaptured(MediaCapturedEventArgs args) => MediaCaptured?.Invoke(this, args);
