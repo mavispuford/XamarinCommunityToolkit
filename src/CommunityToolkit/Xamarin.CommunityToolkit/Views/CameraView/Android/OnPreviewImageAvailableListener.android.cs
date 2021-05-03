@@ -8,41 +8,43 @@ namespace Xamarin.CommunityToolkit.UI.Views
 {
 	public class OnPreviewImageAvailableListener : Java.Lang.Object, ImageReader.IOnImageAvailableListener
 	{
-		private readonly ICameraPreviewProcessor _cameraPreviewProcessor;
-		private readonly Context _context;
+		readonly ICameraPreviewProcessor cameraPreviewProcessor;
+		readonly Context context;
 
+#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
 		public OnPreviewImageAvailableListener()
+#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
 		{
-			_cameraPreviewProcessor = DependencyService.Get<ICameraPreviewProcessor>();
+			cameraPreviewProcessor = DependencyService.Get<ICameraPreviewProcessor>();
 		}
 
 		public OnPreviewImageAvailableListener(Context context)
             : this()
 		{
-			_context = context;
+			this.context = context;
 		}
 
-		public async void OnImageAvailable(ImageReader reader)
+		public async void OnImageAvailable(ImageReader? reader)
 		{
 			using var frame = reader?.AcquireNextImage();
 
 			try
 			{
-				if (frame == null || _cameraPreviewProcessor == null)
+				if (frame == null || cameraPreviewProcessor == null)
 				{
 					return;
 				}
 
-				await _cameraPreviewProcessor.Process(frame, GetDisplayRotationDegrees());
+				await cameraPreviewProcessor.Process(frame, GetDisplayRotationDegrees());
 			}
 			finally
 			{
-				frame.Close();
+				frame?.Close();
 			}
 		}
 
 		SurfaceOrientation GetDisplayRotation()
-			=> _context.GetSystemService(Context.WindowService).JavaCast<IWindowManager>().DefaultDisplay.Rotation;
+			=> context?.GetSystemService(Context.WindowService)?.JavaCast<IWindowManager>()?.DefaultDisplay?.Rotation ?? SurfaceOrientation.Rotation90;
 
 		int GetDisplayRotationDegrees() =>
 			GetDisplayRotation() switch

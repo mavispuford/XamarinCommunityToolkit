@@ -16,13 +16,13 @@ namespace Xamarin.CommunityToolkit.UI.Views
 		readonly AVCaptureVideoPreviewLayer previewLayer;
 		readonly AVCaptureSession captureSession;
 		readonly UIView mainView;
-		AVCaptureDeviceInput input;
-		AVCaptureStillImageOutput imageOutput;
-		AVCapturePhotoOutput photoOutput;
-		AVCaptureMovieFileOutput videoOutput;
-		AVCaptureVideoDataOutput dataOutput;
-		AVCaptureConnection captureConnection;
-		AVCaptureDevice device;
+		AVCaptureDeviceInput? input;
+		AVCaptureStillImageOutput? imageOutput;
+		AVCapturePhotoOutput? photoOutput;
+		AVCaptureMovieFileOutput? videoOutput;
+		AVCaptureVideoDataOutput? dataOutput;
+		AVCaptureConnection? captureConnection;
+		AVCaptureDevice? device;
 		AVCaptureDevicePosition? lastPosition;
 		bool isBusy;
 		bool isAvailable;
@@ -31,11 +31,11 @@ namespace Xamarin.CommunityToolkit.UI.Views
 		CameraCaptureMode captureMode;
 		readonly float imgScale = 1f;
 
-		public event EventHandler<bool> Busy;
+		public event EventHandler<bool>? Busy;
 
-		public event EventHandler<bool> Available;
+		public event EventHandler<bool>? Available;
 
-		public event EventHandler<Tuple<NSObject, NSError>> FinishCapture;
+		public event EventHandler<Tuple<NSObject?, NSError?>>? FinishCapture;
 
 		public bool VideoRecorded => videoOutput?.Recording == true;
 
@@ -92,7 +92,7 @@ namespace Xamarin.CommunityToolkit.UI.Views
 			}
 		}
 
-		void LogError(string message, Exception error = null)
+		void LogError(string message, Exception? error = null)
 		{
 			var errorMessage = error == null
 				? string.Empty
@@ -119,6 +119,8 @@ namespace Xamarin.CommunityToolkit.UI.Views
 		UIImage RotateImage(UIImage image)
 		{
 			var imgRef = image.CGImage;
+			_ = imgRef ?? throw new NullReferenceException();
+
 			var transform = CGAffineTransform.MakeIdentity();
 
 			var imgHeight = imgRef.Height * imgScale;
@@ -191,7 +193,7 @@ namespace Xamarin.CommunityToolkit.UI.Views
 
 		public async Task TakePhoto()
 		{
-			if (isBusy || device == null || photoOutput != null)
+			if (isBusy || device == null)
 				return;
 
 			IsBusy = true;
@@ -201,7 +203,7 @@ namespace Xamarin.CommunityToolkit.UI.Views
 			{
 				var photoOutputConnection = photoOutput.ConnectionFromMediaType(AVMediaType.Video);
 				if (photoOutputConnection != null)
-					photoOutputConnection.VideoOrientation = previewLayer.Connection.VideoOrientation;
+					photoOutputConnection.VideoOrientation = previewLayer.Connection?.VideoOrientation ?? throw new NullReferenceException();
 
 				var photoSettings = AVCapturePhotoSettings.Create();
 				photoSettings.FlashMode = (AVCaptureFlashMode)flashMode;
@@ -211,7 +213,7 @@ namespace Xamarin.CommunityToolkit.UI.Views
 				{
 					OnFinishCapture = (data, error) =>
 					{
-						FinishCapture?.Invoke(this, new Tuple<NSObject, NSError>(data, error));
+						FinishCapture?.Invoke(this, new Tuple<NSObject?, NSError?>(data, error));
 						IsBusy = false;
 					},
 					WillCapturePhotoAnimation = () => Animate(0.25, () => previewLayer.Opacity = 1)
@@ -224,17 +226,20 @@ namespace Xamarin.CommunityToolkit.UI.Views
 			// iOS < 10
 			try
 			{
-				var connection = imageOutput.Connections[0];
-				connection.VideoOrientation = previewLayer.Connection.VideoOrientation;
+				var connection = imageOutput?.Connections[0] ?? throw new NullReferenceException();
+				connection.VideoOrientation = previewLayer.Connection?.VideoOrientation ?? throw new NullReferenceException();
 				var sampleBuffer = await imageOutput.CaptureStillImageTaskAsync(connection);
 				var imageData = AVCaptureStillImageOutput.JpegStillToNSData(sampleBuffer);
-				FinishCapture?.Invoke(this, new Tuple<NSObject, NSError>(imageData, null));
+				FinishCapture?.Invoke(this, new Tuple<NSObject?, NSError?>(imageData, null));
 			}
 			catch (Exception)
 			{
-				FinishCapture?.Invoke(this, new Tuple<NSObject, NSError>(null, new NSError(new NSString("faled create image"), 0)));
+				FinishCapture?.Invoke(this, new Tuple<NSObject?, NSError?>(null, new NSError(new NSString("faled create image"), 0)));
 			}
-			IsBusy = false;
+			finally
+			{
+				IsBusy = false;
+			}
 		}
 
 		string ConstructVideoFilename()
@@ -271,7 +276,7 @@ namespace Xamarin.CommunityToolkit.UI.Views
 			IsBusy = true;
 			try
 			{
-				videoOutput.Connections[0].VideoOrientation = previewLayer.Connection.VideoOrientation;
+				videoOutput.Connections[0].VideoOrientation = previewLayer.Connection?.VideoOrientation ?? throw new NullReferenceException();
 				var connection = videoOutput.Connections[0];
 
 				if (connection.SupportsVideoOrientation)
@@ -287,7 +292,10 @@ namespace Xamarin.CommunityToolkit.UI.Views
 			{
 				LogError("Error with camera output capture", error);
 			}
-			IsBusy = false;
+			finally
+			{
+				IsBusy = false;
+			}
 		}
 
 		public void StopRecord()
@@ -299,9 +307,12 @@ namespace Xamarin.CommunityToolkit.UI.Views
 			}
 		}
 
-		public void FinishedRecording(AVCaptureFileOutput captureOutput, NSUrl outputFileUrl, NSObject[] connections, NSError error)
+		public void FinishedRecording(AVCaptureFileOutput captureOutput, NSUrl outputFileUrl, NSObject[] connections, NSError? error)
 		{
-			FinishCapture?.Invoke(this, new Tuple<NSObject, NSError>(outputFileUrl, error));
+			FinishCapture?.Invoke(this, new Tuple<NSObject?, NSError?>(outputFileUrl, error));
+
+			_ = videoOutput ?? throw new NullReferenceException();
+
 			captureSession.RemoveOutput(videoOutput);
 			videoOutput = null;
 			IsBusy = false;
@@ -319,6 +330,7 @@ namespace Xamarin.CommunityToolkit.UI.Views
 			{
 				var desiredFlashMode = newFlashMode ?? flashMode;
 
+				_ = device ?? throw new NullReferenceException();
 				device.LockForConfiguration(out var err);
 
 				if (CheckFlashModeSupported(desiredFlashMode))
@@ -343,10 +355,12 @@ namespace Xamarin.CommunityToolkit.UI.Views
 					flashMode = desiredFlashMode;
 				}
 
-				if (desiredFlashMode != CameraFlashMode.Torch &&
-					device.TorchMode == AVCaptureTorchMode.On &&
-					device.IsTorchModeSupported(AVCaptureTorchMode.Off))
+				if (desiredFlashMode != CameraFlashMode.Torch
+					&& device.TorchMode == AVCaptureTorchMode.On
+					&& device.IsTorchModeSupported(AVCaptureTorchMode.Off))
+				{
 					device.TorchMode = AVCaptureTorchMode.Off;
+				}
 
 				device.UnlockForConfiguration();
 			}
@@ -357,7 +371,10 @@ namespace Xamarin.CommunityToolkit.UI.Views
 		}
 
 		bool CheckFlashModeSupported(CameraFlashMode flashMode)
-			=> flashMode switch
+		{
+			_ = device ?? throw new NullReferenceException();
+
+			return flashMode switch
 			{
 				CameraFlashMode.Off => device.IsFlashModeSupported(AVCaptureFlashMode.Off),
 				CameraFlashMode.On => device.IsFlashModeSupported(AVCaptureFlashMode.On),
@@ -365,6 +382,7 @@ namespace Xamarin.CommunityToolkit.UI.Views
 				CameraFlashMode.Torch => device.IsTorchModeSupported(AVCaptureTorchMode.On),
 				_ => device.IsFlashModeSupported(AVCaptureFlashMode.Off)
 			};
+		}
 
 		public bool VideoStabilization { get; set; }
 
@@ -381,6 +399,7 @@ namespace Xamarin.CommunityToolkit.UI.Views
 
 			try
 			{
+				_ = device ?? throw new NullReferenceException();
 				device.LockForConfiguration(out var err);
 
 				var focus_x = point.X / Bounds.Width;
@@ -590,13 +609,13 @@ namespace Xamarin.CommunityToolkit.UI.Views
 
 	class PhotoCaptureDelegate : NSObject, IAVCapturePhotoCaptureDelegate
 	{
-		public Action<NSData, NSError> OnFinishCapture;
-		public Action WillCapturePhotoAnimation;
+		public Action<NSData?, NSError>? OnFinishCapture;
+		public Action? WillCapturePhotoAnimation;
 
-		NSData photoData;
+		NSData? photoData;
 
 		[Export("captureOutput:willCapturePhotoForResolvedSettings:")]
-		public void WillCapturePhoto(AVCapturePhotoOutput captureOutput, AVCaptureResolvedPhotoSettings resolvedSettings) => WillCapturePhotoAnimation();
+		public void WillCapturePhoto(AVCapturePhotoOutput captureOutput, AVCaptureResolvedPhotoSettings resolvedSettings) => WillCapturePhotoAnimation?.Invoke();
 
 		[Export("captureOutput:didFinishProcessingPhotoSampleBuffer:previewPhotoSampleBuffer:resolvedSettings:bracketSettings:error:")]
 		public void DidFinishProcessingPhoto(AVCapturePhotoOutput captureOutput, CMSampleBuffer photoSampleBuffer, CMSampleBuffer previewPhotoSampleBuffer, AVCaptureResolvedPhotoSettings resolvedSettings, AVCaptureBracketedStillImageSettings bracketSettings, NSError error)
@@ -609,6 +628,6 @@ namespace Xamarin.CommunityToolkit.UI.Views
 
 		[Export("captureOutput:didFinishCaptureForResolvedSettings:error:")]
 		public void DidFinishCapture(AVCapturePhotoOutput captureOutput, AVCaptureResolvedPhotoSettings resolvedSettings, NSError error)
-			=> OnFinishCapture(photoData, error);
+			=> OnFinishCapture?.Invoke(photoData, error);
 	}
 }

@@ -13,13 +13,13 @@ namespace Xamarin.CommunityToolkit.UI.Views
 			Performance
 		}
 
-		public event EventHandler<MediaCapturedEventArgs> MediaCaptured;
+		public event EventHandler<MediaCapturedEventArgs>? MediaCaptured;
 
-		public event EventHandler<string> MediaCaptureFailed;
+		public event EventHandler<string>? MediaCaptureFailed;
 
-		public event EventHandler<bool> OnAvailable;
+		public event EventHandler<bool>? OnAvailable;
 
-		internal event EventHandler ShutterClicked;
+		internal event EventHandler? ShutterClicked;
 
 		internal static readonly BindablePropertyKey ShutterCommandPropertyKey =
 			BindableProperty.CreateReadOnly(nameof(ShutterCommand),
@@ -32,7 +32,7 @@ namespace Xamarin.CommunityToolkit.UI.Views
 		public static readonly BindableProperty ShutterCommandProperty = ShutterCommandPropertyKey.BindableProperty;
 
 		[Preserve(Conditional = true)]
-		public ICommand ShutterCommand => (ICommand)GetValue(ShutterCommandProperty);
+		public ICommand? ShutterCommand => (ICommand?)GetValue(ShutterCommandProperty);
 
 		public static readonly BindableProperty IsBusyProperty = BindableProperty.Create(nameof(IsBusy), typeof(bool), typeof(CameraView), false);
 
@@ -131,10 +131,12 @@ namespace Xamarin.CommunityToolkit.UI.Views
 
 		public void Shutter() => ShutterClicked?.Invoke(this, EventArgs.Empty);
 
-		static object ShutterCommandValueCreator(BindableObject b)
+		static object? ShutterCommandValueCreator(BindableObject? b)
 		{
-			var camera = (CameraView)b;
-			return new Command(camera.Shutter);
+			if (b is CameraView camera)
+				return new Command(camera.Shutter);
+
+			return null;
 		}
 	}
 }
